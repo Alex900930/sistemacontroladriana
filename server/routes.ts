@@ -7,6 +7,8 @@ import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { db } from "./db"; // For seed only
 import { owners, properties, tenants, leases, payments } from "@shared/schema";
 
+import { asaas } from "./asaas";
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -30,7 +32,24 @@ export async function registerRoutes(
   app.post(api.owners.create.path, async (req, res) => {
     try {
       const input = api.owners.create.input.parse(req.body);
-      const result = await storage.createOwner(input);
+      
+      // Integrate with Asaas to create Subaccount
+      let asaasSubaccountId = null;
+      try {
+        const asaasAccount = await asaas.createSubaccount({
+          name: input.name,
+          email: input.email,
+          cpfCnpj: input.cpfCnpj
+        });
+        asaasSubaccountId = asaasAccount.walletId;
+      } catch (err) {
+        console.error("Error creating Asaas subaccount:", err);
+      }
+
+      const result = await storage.createOwner({
+        ...input,
+        asaasSubaccountId
+      });
       res.status(201).json(result);
     } catch (err) {
       if (err instanceof z.ZodError) res.status(400).json({ message: err.errors[0].message });
@@ -116,7 +135,25 @@ export async function registerRoutes(
   app.post(api.tenants.create.path, async (req, res) => {
     try {
       const input = api.tenants.create.input.parse(req.body);
-      const result = await storage.createTenant(input);
+      
+      // Integrate with Asaas to create Customer
+      let asaasCustomerId = null;
+      try {
+        const asaasCustomer = await asaas.createCustomer({
+          name: input.name,
+          email: input.email,
+          cpfCnpj: input.cpfCnpj,
+          phone: input.phone || undefined
+        });
+        asaasCustomerId = asaasCustomer.id;
+      } catch (err) {
+        console.error("Error creating Asaas customer:", err);
+      }
+
+      const result = await storage.createTenant({
+        ...input,
+        asaasCustomerId
+      });
       res.status(201).json(result);
     } catch (err) {
       if (err instanceof z.ZodError) res.status(400).json({ message: err.errors[0].message });
@@ -159,14 +196,47 @@ export async function registerRoutes(
   app.post(api.leases.create.path, async (req, res) => {
     try {
       const input = api.leases.create.input.parse(req.body);
-      const result = await storage.createLease(input);
-      // MOCK ASAAS INTEGRATION:
-      // In a real app, we would call Asaas API here to create the subscription
-      // and update the lease with asaasSubscriptionId.
-      const mockAsaasId = `sub_${Math.random().toString(36).substr(2, 9)}`;
-      await storage.updateLeaseAsaasId(result.id, mockAsaasId);
       
-      res.status(201).json({ ...result, asaasSubscriptionId: mockAsaasId });
+      // Fetch property/owner and tenant details for split
+      const property = await storage.getProperty(input.propertyId);
+      if (!property) return res.status(404).json({ message: "Property not found" });
+      
+      const owner = await storage.getOwner(property.ownerId);
+      if (!owner) return res.status(404).json({ message: "Owner not found" });
+      
+      const tenant = await storage.getTenant(input.tenantId);
+      if (!tenant) return res.status(404).json({ message: "Tenant not found" });
+
+      const result = await storage.createLease(input);
+      
+      // Integrate with Asaas to create Subscription with Split
+      let asaasSubscriptionId = null;
+      if (tenant.asaasCustomerId && owner.asaasSubaccountId) {
+        try {
+          const subscription = await asaas.createSubscription({
+            customer: tenant.asaasCustomerId,
+            value: Number(input.value),
+            nextDueDate: input.startDate.toISOString().split('T')[0],
+            cycle: "MONTHLY",
+            description: `Aluguel - ${property.address}`,
+            split: [
+              {
+                walletId: owner.asaasSubaccountId,
+                percentualValue: 90, // Example: 90% for owner
+              }
+            ]
+          });
+          asaasSubscriptionId = subscription.id;
+        } catch (err) {
+          console.error("Error creating Asaas subscription:", err);
+        }
+      }
+
+      if (asaasSubscriptionId) {
+        await storage.updateLeaseAsaasId(result.id, asaasSubscriptionId);
+      }
+      
+      res.status(201).json({ ...result, asaasSubscriptionId });
     } catch (err) {
       if (err instanceof z.ZodError) res.status(400).json({ message: err.errors[0].message });
       else throw err;
