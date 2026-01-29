@@ -140,7 +140,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createLease(insertLease: InsertLease): Promise<Lease> {
-    const [lease] = await db.insert(leases).values(insertLease).returning();
+    const [lease] = await db.insert(leases).values({
+      ...insertLease,
+      value: insertLease.value.toString(),
+    }).returning();
     return lease;
   }
 
@@ -166,7 +169,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPayment(insertPayment: InsertPayment): Promise<Payment> {
-    const [payment] = await db.insert(payments).values(insertPayment).returning();
+    const [payment] = await db.insert(payments).values({
+      ...insertPayment,
+      amount: insertPayment.amount.toString(),
+    }).returning();
     return payment;
   }
 
