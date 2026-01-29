@@ -1,0 +1,43 @@
+Prompt Maestro (Edición Full Stack: Next.js + PostgreSQL + Asaas)
+Contexto: "Crea un sistema ERP Inmobiliario de alta complejidad usando Next.js 14 (App Router) y PostgreSQL como base de datos. El sistema debe gestionar cobros y repartos de dinero (repasses) integrándose con la API de Asaas.com."
+Lenguaje: Todo o sistema debe de estar en portugues de brasil 
+Arquitectura de Base de Datos (PostgreSQL): Diseña el esquema de tablas en SQL pensando en la integración con Asaas:
+
+Table 'Owners' (Propietarios): Incluir campos para asaas_subaccount_id (para el split de pagos) y datos bancarios.
+
+Table 'Properties' (Inmuebles): Relacionada con un Propietario.
+
+Table 'Tenants' (Inquilinos): Con campo asaas_customer_id.
+
+Table 'Leases' (Contratos): Debe almacenar asaas_subscription_id, valor del alquiler, día de vencimiento, fecha de inicio y el índice de reajuste (IPCA/IGP-M).
+
+Table 'Payments': Registro de pagos recibidos sincronizados vía Webhook de Asaas.
+
+Funcionalidades de Backend (Next.js API Routes):
+
+Webhooks de Asaas: Crea un endpoint /api/webhooks/asaas que escuche los eventos PAYMENT_RECEIVED y PAYMENT_OVERDUE. Cuando se reciba un pago, debe actualizar el status en la base de datos PostgreSQL automáticamente.
+
+Server Actions para Cobranza: Una función que al crear un contrato en el dashboard, registre al cliente en Asaas y cree la 'Subscription' con la regla de Split (comisión para Adriana y resto para el Propietario).
+
+Lógica de Automatización:
+
+Implementa la lógica para Reajuste Anual: El sistema debe consultar la base de datos PostgreSQL para encontrar contratos que cumplan 12 meses y generar una tarea de actualización de valor en la API de Asaas basada en el índice de inflación.
+
+Interfaz de Usuario (Frontend):
+
+Dashboard administrativo para Adriana usando Shadcn/UI y Tailwind.
+
+Visualización de tablas de datos conectadas a PostgreSQL mediante Prisma ORM o Drizzle ORM.
+
+Filtros avanzados por status de pago (Pagado, Pendiente, Atrasado).
+
+Instrucciones de Conexión: "Genera el archivo schema.prisma o los scripts SQL necesarios para mi base de datos PostgreSQL y asume que usaré las variables de entorno DATABASE_URL y ASAAS_API_KEY."
+
+¿Cómo vas a trabajar con esto en tu máquina?
+Prisma/Drizzle: Te recomiendo mucho usar un ORM (como Prisma). Lovable te dará un archivo de esquema. Solo tendrás que copiar la URL de conexión de tu base de datos local de PostgreSQL (que ves en pgAdmin) en tu archivo .env.
+
+Sincronización: Cada vez que Asaas procese un pago, enviará un "mensaje" (Webhook) a tu servidor Next.js. Tu código recibirá ese mensaje y hará un UPDATE en tu PostgreSQL. Así, cuando Adriana entre a su panel, verá los datos actualizados sin tener que entrar a Asaas.
+
+Seguridad: Al usar PostgreSQL, puedes usar transacciones SQL. Esto significa que si el registro del pago falla en tu base de datos, puedes marcarlo para revisión, asegurando que el dinero y los datos siempre coincidan.
+
+Dato importante: Como Asaas ya hace el trabajo de "robot de cobranza", tu base de datos PostgreSQL servirá como el espejo legal y contable de Adriana. Si el día de mañana ella quiere cambiar de Asaas a otro banco, todos los datos históricos (quién pagó, cuándo y cuánto) estarán seguros en tu PostgreSQL.
