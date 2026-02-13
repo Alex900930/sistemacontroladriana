@@ -1,3 +1,5 @@
+import dotenv from 'dotenv';
+dotenv.config(); // Esto obliga al servidor a leer el archivo .env
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "@shared/schema";

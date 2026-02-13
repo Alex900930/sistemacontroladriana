@@ -48,14 +48,16 @@ export default function Tenants() {
   return (
     <DashboardLayout>
        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">Inquilinos</h1>
-          <p className="text-slate-500 mt-1">Gerencie os locatários</p>
-        </div>
-        <Button onClick={() => setIsOpen(true)} className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20">
-          <Plus className="mr-2 h-4 w-4" /> Novo Inquilino
+         <h1 className="text-2xl font-bold">Inquilinos</h1>
+         <Input
+           placeholder="Pesquisar inquilinos..."
+           value={search}
+           onChange={(e) => setSearch(e.target.value)}
+         />
+         <Button onClick={() => setIsOpen(true)} className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20">
+          <Plus className="mr-2 h-4 w-4" /> Adicionar Inquilino
         </Button>
-      </div>
+       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="p-4 border-b border-slate-100 bg-slate-50/50">

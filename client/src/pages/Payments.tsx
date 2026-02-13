@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { usePayments } from "@/hooks/use-payments";
+import { usePayments, useUpdatePayment } from "@/hooks/use-payments";
 import { 
   Table, 
   TableBody, 
@@ -13,6 +13,20 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { insertPaymentSchema } from "@shared/schema";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Payments() {
   const [status, setStatus] = useState<'PENDING' | 'RECEIVED' | 'OVERDUE' | 'ALL'>('ALL');
@@ -66,28 +80,19 @@ export default function Payments() {
                 <TableHead>Valor</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Data Pagamento</TableHead>
+                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {payments?.length === 0 ? (
                  <TableRow>
-                   <TableCell colSpan={5} className="text-center py-12 text-slate-500">
+                   <TableCell colSpan={6} className="text-center py-12 text-slate-500">
                      Nenhum pagamento encontrado.
                    </TableCell>
                  </TableRow>
               ) : (
                 payments?.map((payment) => (
-                  <TableRow key={payment.id} className="hover:bg-slate-50/80 transition-colors">
-                    <TableCell className="font-medium text-slate-900">
-                      #{payment.lease.id} - R$ {payment.lease.value}
-                    </TableCell>
-                    <TableCell>{format(new Date(payment.dueDate), 'dd/MM/yyyy')}</TableCell>
-                    <TableCell className="font-semibold">{formatCurrency(payment.amount)}</TableCell>
-                    <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                    <TableCell>
-                      {payment.paymentDate ? format(new Date(payment.paymentDate), 'dd/MM/yyyy') : '-'}
-                    </TableCell>
-                  </TableRow>
+                  <PaymentRow key={payment.id} payment={payment} formatCurrency={formatCurrency} getStatusBadge={getStatusBadge} />
                 ))
               )}
             </TableBody>
@@ -95,5 +100,104 @@ export default function Payments() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+function PaymentRow({ payment, formatCurrency, getStatusBadge }: any) {
+  const { mutateAsync, isLoading } = useUpdatePayment();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+
+  const form = useForm({
+    resolver: zodResolver(insertPaymentSchema.partial()),
+    defaultValues: {
+      tipoPagamento: 'Asaas',
+      valorRecebido: undefined,
+    },
+  });
+
+  const onSubmit = async (data: any) => {
+    try {
+      await mutateAsync({ id: payment.id, data });
+      toast({ title: 'Pagamento atualizado' });
+      setOpen(false);
+    } catch (err) {
+      toast({ title: 'Erro ao atualizar pagamento', variant: 'destructive' });
+    }
+  };
+
+  return (
+    <>
+      <TableRow className="hover:bg-slate-50/80 transition-colors">
+        <TableCell className="font-medium text-slate-900">#{payment.lease.id} - R$ {payment.lease.value}</TableCell>
+        <TableCell>{format(new Date(payment.dueDate), 'dd/MM/yyyy')}</TableCell>
+        <TableCell className="font-semibold">{formatCurrency(payment.amount)}</TableCell>
+        <TableCell>{getStatusBadge(payment.status)}</TableCell>
+        <TableCell>
+          {payment.paymentDate ? format(new Date(payment.paymentDate), 'dd/MM/yyyy') : '-'}
+        </TableCell>
+        <TableCell>
+          {payment.status !== 'RECEIVED' ? (
+            <Button onClick={() => setOpen(true)} className="bg-green-600">Baixa Manual</Button>
+          ) : null}
+        </TableCell>
+      </TableRow>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Baixa Manual - Pagamento #{payment.id}</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="tipoPagamento"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Pagamento</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value as any}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Asaas">Asaas</SelectItem>
+                        <SelectItem value="Dinheiro">Dinheiro</SelectItem>
+                        <SelectItem value="Cartão">Cartão</SelectItem>
+                        <SelectItem value="Pix">Pix</SelectItem>
+                        <SelectItem value="Outro">Outro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="valorRecebido"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor Recebido (R$)</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="number" step="0.01" placeholder={String(payment.amount)} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end">
+                <Button type="submit" className="bg-blue-600" disabled={isLoading}>
+                  Confirmar
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

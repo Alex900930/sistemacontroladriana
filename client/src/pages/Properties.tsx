@@ -5,6 +5,7 @@ import { useOwners } from "@/hooks/use-owners";
 import { Button } from "@/components/ui/button";
 import { Plus, Search, Trash2, Pencil, Loader2, Home } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { z } from "zod";
 import {
   Dialog,
   DialogContent,
@@ -49,11 +50,11 @@ export default function Properties() {
     <DashboardLayout>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Imóveis</h1>
+          <h1 className="text-3xl font-bold text-slate-900">Propriedades</h1>
           <p className="text-slate-500 mt-1">Gerencie seu portfólio de propriedades</p>
         </div>
         <Button onClick={() => setIsOpen(true)} className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20">
-          <Plus className="mr-2 h-4 w-4" /> Novo Imóvel
+          <Plus className="mr-2 h-4 w-4" /> Nova Propriedade
         </Button>
       </div>
 
@@ -74,7 +75,7 @@ export default function Properties() {
           </div>
         ) : filtered?.length === 0 ? (
           <div className="col-span-full text-center py-12 text-slate-500 bg-white rounded-xl border border-slate-200 border-dashed">
-            Nenhum imóvel encontrado.
+            Nenhuma propriedade encontrada.
           </div>
         ) : (
           filtered?.map((prop) => (
@@ -86,7 +87,7 @@ export default function Properties() {
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingProperty ? 'Editar Imóvel' : 'Novo Imóvel'}</DialogTitle>
+            <DialogTitle>{editingProperty ? 'Editar Propriedade' : 'Nova Propriedade'}</DialogTitle>
           </DialogHeader>
           <PropertyForm 
             onSuccess={handleClose} 
@@ -103,9 +104,9 @@ function PropertyCard({ property, onEdit }: { property: PropertyWithDetails, onE
   const { toast } = useToast();
 
   const handleDelete = () => {
-    if (confirm('Excluir este imóvel?')) {
+    if (confirm('Excluir esta propriedade?')) {
       deleteProp(property.id, {
-        onSuccess: () => toast({ title: "Imóvel excluído!" }),
+        onSuccess: () => toast({ title: "Propriedade excluída!" }),
         onError: () => toast({ title: "Erro ao excluir", variant: "destructive" })
       });
     }
@@ -144,41 +145,61 @@ function PropertyForm({ onSuccess, initialData }: { onSuccess: () => void, initi
   const { mutate: updateProp, isPending: isUpdating } = useUpdateProperty();
   const { toast } = useToast();
 
-  const form = useForm<InsertProperty>({
-    resolver: zodResolver(insertPropertySchema),
-    defaultValues: initialData ? {
-      address: initialData.address,
-      description: initialData.description,
-      ownerId: initialData.ownerId,
-    } : {
-      address: "",
-      description: "",
-      ownerId: 0,
-    },
-  });
+// Busca esta línea en tu PropertyForm
+const form = useForm<InsertProperty>({
+  resolver: zodResolver(
+    insertPropertySchema.extend({
+      // Esto acepta el string del Select y lo convierte a número para que Zod no se queje
+      ownerId: z.preprocess((val) => Number(val), z.number().min(1, "Selecione un proprietário"))
+    })
+  ),
+  defaultValues: initialData ? {
+    address: initialData.address,
+    description: initialData.description,
+    ownerId: initialData.ownerId,
+  } : {
+    address: "",
+    description: "",
+    // @ts-ignore
+    ownerId: undefined, 
+  },
+});
 
-  const onSubmit = (data: InsertProperty) => {
-    // Ensure ownerId is a number
-    data.ownerId = Number(data.ownerId);
+ const onSubmit = (data: InsertProperty) => {
+  // Aseguramos la conversión limpia
+ console.log("Form data submitted:", data);
 
-    if (initialData) {
-      updateProp({ id: initialData.id, ...data }, {
-        onSuccess: () => {
-          toast({ title: "Imóvel atualizado!" });
-          onSuccess();
-        },
-        onError: () => toast({ title: "Erro ao atualizar", variant: "destructive" })
-      });
-    } else {
-      createProp(data, {
-        onSuccess: () => {
-          toast({ title: "Imóvel criado!" });
-          onSuccess();
-        },
-        onError: () => toast({ title: "Erro ao criar", variant: "destructive" })
-      });
-    }
+  const payload = {
+    ...data,
+    ownerId: Number(data.ownerId),
   };
+
+  if (initialData) {
+    updateProp({ id: initialData.id, ...payload }, {
+      onSuccess: () => {
+        toast({ title: "Propriedade atualizada!" });
+        onSuccess();
+      },
+      onError: (error) => toast({ 
+        title: "Erro ao atualizar", 
+        description: "Verifique os dados informados.",
+        variant: "destructive" 
+      })
+    });
+  } else {
+    createProp(payload, {
+      onSuccess: () => {
+        toast({ title: "Propriedade criada!" });
+        onSuccess();
+      },
+      onError: (error) => toast({ 
+        title: "Erro ao criar", 
+        description: "Verifique se o proprietário existe.",
+        variant: "destructive" 
+      })
+    });
+  }
+};
 
   return (
     <Form {...form}>
