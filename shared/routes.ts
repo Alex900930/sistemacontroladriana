@@ -5,7 +5,7 @@ import {
   insertTenantSchema, tenants,
   insertLeaseSchema, leases,
   insertPaymentSchema, payments
-} from './schema';
+} from './schema.ts';
 
 // Shared error schemas
 export const errorSchemas = {
