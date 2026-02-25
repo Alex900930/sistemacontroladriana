@@ -85,9 +85,17 @@ app.use((req, res, next) => {
   }
 
   // 3. Configuración del Puerto para Windows
-  const port = 5050; 
+ /*  const port = 5050; 
 
   httpServer.listen(port, "127.0.0.1", () => {
     log(`Servidor rodando em http://localhost:${port}`);
+  }); */
+
+  const port = process.env.PORT || 5050; 
+
+  // IMPORTANTE: Quitamos "127.0.0.1" para que escuche en todas las interfaces (0.0.0.0)
+  httpServer.listen(port, "0.0.0.0", () => {
+    log(`Servidor rodando na porta ${port}`);
   });
+
 })();
