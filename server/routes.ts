@@ -5,7 +5,7 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 //import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { db } from "./db"; // For seed only
-import { owners, properties, tenants, leases, payments, insertPaymentSchema } from "@shared/schema";
+import { owners, properties, tenants, leases, payments, insertPaymentSchema } from "../shared/schema.ts";
 
 import { eq, and, or } from "drizzle-orm"; // IMPORTANTE: Para las consultas .where(eq(...))
 
