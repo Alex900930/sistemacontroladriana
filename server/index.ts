@@ -1,72 +1,39 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes.ts";
-import { serveStatic } from "./static.ts";
+import { registerRoutes } from "./routes"; // CAMBIO: Usamos .js (o nada)
+import { serveStatic } from "./static";      // CAMBIO: Usamos .js (o nada)
 import { createServer } from "http";
 import dotenv from "dotenv";
 
 dotenv.config();
 
 const app = express();
-
-export default app; 
-
 const httpServer = createServer(app);
 
-declare module "http" {
-  interface IncomingMessage {
-    rawBody: unknown;
-  }
-}
-
-app.use(
-  express.json({
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
-    },
-  }),
-);
-
+// Configuración de Middlewares
+app.use(express.json({
+  verify: (req: any, _res, buf) => {
+    req.rawBody = buf;
+  },
+}));
 app.use(express.urlencoded({ extended: false }));
 
-export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-
- 
-}
-
+// Middleware de Logging para depuración en Vercel
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-      log(logLine);
+      console.log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
     }
   });
-
   next();
 });
 
+// Función de inicio asíncrona
 (async () => {
   // 1. Registro de rutas del Backend
-  const server = await registerRoutes(httpServer, app);
+  await registerRoutes(httpServer, app);
 
   // Error handling middleware
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
@@ -83,28 +50,18 @@ app.use((req, res, next) => {
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
-    const { setupVite } = await import("./vite");
-    await setupVite(app, httpServer); // <--- PRIMERO 'app', LUEGO 'httpServer'
+    const { setupVite } = await import("./vite.js");
+    await setupVite(app, httpServer);
   }
 
-
-  const port = process.env.PORT || 5050; 
-
- /*  // IMPORTANTE: Quitamos "127.0.0.1" para que escuche en todas las interfaces (0.0.0.0)
-  httpServer.listen(port, "0.0.0.0", () => {
-    log(`Servidor rodando na porta ${port}`);
-  }); */
-
-  // 1. Exportamos 'app' para que Vercel pueda usarlo como un handler
-
-
-// 2. Solo ejecutamos el .listen si NO estamos en Vercel (entorno local)
-if (process.env.NODE_ENV !== "production") {
-  const port = 5050;
-  httpServer.listen(port, "0.0.0.0", () => {
-    log(`Servidor local rodando em http://localhost:${port}`);
-  });
-
-}
-
+  // 3. Ejecución del servidor (Solo en local)
+  if (process.env.NODE_ENV !== "production") {
+    const port = 5050;
+    httpServer.listen(port, "0.0.0.0", () => {
+      console.log(`Servidor local rodando em http://localhost:${port}`);
+    });
+  }
 })();
+
+// VITAL PARA VERCEL: Exportamos la app como default
+export default app;

@@ -480,18 +480,29 @@ app.put('/api/payments/:id', async (req, res) => {
 }
 
 async function seedDatabase() {
+
   const existingOwners = await storage.getOwners();
+
   if (existingOwners.length > 0) return;
 
 
   
   // Create Owner
-  /* const owner = await storage.createOwner({
-    name: "Adriana Silva",
-    email: "adriana@example.com",
-    cpfCnpj: "123.456.789-00",
-    bankInfo: "Banco do Brasil, Ag 1234, CC 56789-0"
-  }); */
+ const owner = await storage.createOwner({
+      name: "Adriana Silva",
+      email: "adriana@example.com",
+      cpfCnpj: "123.456.789-00",
+      bankInfo: "Banco do Brasil, Ag 1234, CC 56789-0",
+      birthDate: "1980-01-01",
+      phone: "11999999999",
+      address: "Rua Exemplo",
+      addressNumber: "100",
+      province: "Centro",
+      postalCode: "01001000",
+      city: "São Paulo",
+      state: "SP",
+      pixKey: "adriana@pix.com"
+    });
 
   // Create Property
   const property = await storage.createProperty({
