@@ -4,7 +4,7 @@ import { z } from "zod";
 import { relations } from "drizzle-orm";
 
 // Export Auth Models
-export * from "./models/auth.ts";
+export * from "./models/auth.js";
 
 // === TABLE DEFINITIONS ===
 
