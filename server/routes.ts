@@ -473,6 +473,14 @@ app.put('/api/payments/:id', async (req, res) => {
     res.json({ received: true });
   });
 
+  app.get("/api/health", (_req, res) => {
+  res.json({ 
+    status: "ok", 
+    message: "Servidor ImobiERP vivo", 
+    db: process.env.DATABASE_URL ? "configurada" : "falta url" 
+  });
+});
+
   // Seed Data (if empty)
   await seedDatabase();
 
@@ -546,6 +554,6 @@ async function seedDatabase() {
     status: "PENDING",
     dueDate: new Date("2024-03-05")
   });
-
+  
 
 }
