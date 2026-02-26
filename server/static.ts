@@ -1,28 +1,28 @@
 import express, { type Express } from "express";
-import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
+import fs from "fs";
 
 export function serveStatic(app: Express) {
-  // Obtenemos la ruta raíz de forma segura para ESM
-  const rootPath = process.cwd();
-  // Tu script de build genera los archivos en dist/public
-  const distPath = path.resolve(rootPath, "dist", "public");
+  // process.cwd() nos da la raíz del proyecto en Vercel
+  const distPath = path.resolve(process.cwd(), "dist", "public");
 
-  if (!fs.existsSync(distPath)) {
-    console.warn(`⚠️ Directorio de build no encontrado en: ${distPath}. Asegúrate de que 'npm run build' se ejecute correctamente.`);
-    return;
-  }
+  // Servir archivos estáticos (el JS y CSS de React)
+  app.use(express.static(distPath));
 
-  // Servir archivos estáticos (js, css, imágenes)
-  app.use(express.static(distPath, { index: false }));
-
-  // CUALQUIER otra ruta que no sea API, debe devolver el index.html (Single Page App)
+  // FALLBACK: Si el usuario pide cualquier ruta (como /dashboard),
+  // le entregamos el index.html y dejamos que React decida qué mostrar.
   app.get("*", (req, res, next) => {
-    // Si la ruta empieza con /api, no enviamos el HTML (dejamos que pase a las rutas de API)
+    // Si la ruta empieza con /api, no enviamos el HTML
     if (req.path.startsWith("/api")) {
       return next();
     }
-    res.sendFile(path.resolve(distPath, "index.html"));
+    
+    const indexPath = path.resolve(distPath, "index.html");
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      // Si no existe el index, es que el build falló.
+      res.status(404).send("Frontend build not found. Run npm run build.");
+    }
   });
 }
