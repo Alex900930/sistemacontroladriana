@@ -1,16 +1,16 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
-import { api } from "../shared/routes";
+import { api } from "../shared/routes.js";
 import { z } from "zod";
 //import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
-import { db } from "./db.ts"; // For seed only
-import { properties, tenants, leases, payments, insertPaymentSchema } from ".././shared/schema";
+import { db } from "./db.js"; // For seed only
+import { properties, tenants, leases, payments, insertPaymentSchema } from ".././shared/schema.js";
 
 import { eq, and, or } from "drizzle-orm"; // IMPORTANTE: Para las consultas .where(eq(...))
 
 
-import { asaas } from "./asaas";
+import { asaas } from "./asaas.js";
 
 export async function registerRoutes(
   httpServer: Server,
