@@ -1,5 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes"; // CAMBIO: Usamos .js (o nada)
+import { registerRoutes } from "./routes.js"; // CAMBIO: Usamos .js (o nada)
 import { serveStatic } from "./static";      // CAMBIO: Usamos .js (o nada)
 import { createServer } from "http";
 import dotenv from "dotenv";
