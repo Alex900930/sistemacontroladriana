@@ -8,7 +8,8 @@ export function serveStatic(app: Express) {
 
   if (fs.existsSync(distPath)) {
     app.use(express.static(distPath));
-    app.get("*", (req, res, next) => {
+    // Catch-all for non-API routes: use a middleware (avoid path-to-regexp wildcard issues)
+    app.use((req, res, next) => {
       if (req.path.startsWith("/api")) return next();
       res.sendFile(path.resolve(distPath, "index.html"));
     });

@@ -4,7 +4,8 @@ import { z } from "zod";
 import { relations } from "drizzle-orm";
 
 // Export Auth Models
-export * from "./models/auth.js";
+// Use TypeScript path for tooling (drizzle-kit runs in Node and reads .ts files here)
+export * from "./models/auth.ts";
 
 // === TABLE DEFINITIONS ===
 
